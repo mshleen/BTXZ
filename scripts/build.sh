@@ -11,18 +11,22 @@ if [[ -z "$VERSION" ]]; then
 fi
 
 echo "▶ Building BTXZ v${VERSION}"
-rm -rf "$OUT" && mkdir -p "$OUT"
+rm -rf "${OUT}" && mkdir -p "${OUT}"
 
 platforms=( windows/amd64 linux/amd64 darwin/amd64 darwin/arm64 )
 for p in "${platforms[@]}"; do
   GOOS=${p%%/*} GOARCH=${p#*/}
-
   bin="btxz-${GOOS}-${GOARCH}"
-  [[ $GOOS = windows ]] && bin+=".exe"
+  [[ $GOOS == windows ]] && bin+=".exe"
 
   echo "  • $GOOS/$GOARCH → $bin"
-  env GOOS=$GOOS GOARCH=$GOARCH \
-    go build -v -o "$OUT/$bin" "./$SRC"
+  (
+    cd "${SRC}"
+    env GOOS="$GOOS" GOARCH="$GOARCH" \
+      go build -v \
+      -o "../${OUT}/${bin}" \
+      .
+  )
 done
 
-echo "✅ Build complete; artifacts in $OUT/"
+echo "✅ Build complete; artifacts in ${OUT}/"
