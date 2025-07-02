@@ -1,3 +1,5 @@
+# .github/workflows/release.yml
+
 name: Create and Publish Release
 
 on:
@@ -8,7 +10,7 @@ on:
       - 'version.json'
 
 permissions:
-  contents: write
+  contents: write # Required to create releases and push a commit
 
 jobs:
   build-and-release:
@@ -19,12 +21,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          # Fetch all history for all tags and branches, required for release notes
           fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
+          # Improve performance by caching Go dependencies
           cache-dependency-path: 'btxz/go.sum'
 
       - name: Read version from version.json
@@ -39,7 +43,9 @@ jobs:
           mkdir -p artifacts
           cd btxz
 
-          LDFLAGS="-ldflags=-X main.version=${{ env.VERSION }}"
+          # The -ldflags need to be quoted to be treated as a single argument.
+          # We embed the version number into the binary, accessible via `btxz version`.
+          LDFLAGS="-ldflags=-X 'main.version=${{ env.VERSION }}'"
 
           platforms=("windows/amd64" "linux/amd64" "darwin/amd64" "darwin/arm64")
 
@@ -49,34 +55,49 @@ jobs:
             GOARCH=${platform_split[1]}
             
             output_name="btxz-${GOOS}-${GOARCH}"
-            if [ $GOOS = "windows" ]; then
+            if [ "$GOOS" = "windows" ]; then
               output_name+='.exe'
             fi
 
             echo "Building for $GOOS/$GOARCH..."
-            # The rest of the command is correct and doesn't need to change.
-            env GOOS=$GOOS GOARCH=$GOARCH go build ${LDFLAGS} -o ../artifacts/${output_name} .
+            # The -v flag adds verbosity to the build process for better logging.
+            # The output path and ldflags are quoted for robustness.
+            env GOOS=$GOOS GOARCH=$GOARCH go build -v ${LDFLAGS} -o "../artifacts/${output_name}" .
             if [ $? -ne 0 ]; then
                 echo "An error occurred during build for $GOOS/$GOARCH."
                 exit 1
             fi
           done
 
+      - name: Generate Checksums
+        run: |
+          cd artifacts
+          sha256sum btxz-* > sha256sums.txt
+          echo "Generated checksums:"
+          cat sha256sums.txt
+
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
+          # Use the version from the version.json file for the tag and release name
           tag_name: "v${{ env.VERSION }}"
-          name: "BTXZ™ v${{ env.VERSION }}"
+          name: "Release v${{ env.VERSION }}"
+          # Use the professional release note template below
           body: |
-            Official release for **BTXZ™ v${{ env.VERSION }}**.
+            ## BTXZ™ v${{ env.VERSION }}
+
+            This is the official release of **BTXZ™ v${{ env.VERSION }}**.
 
             See [LICENSE.md](LICENSE.md) for usage terms.
 
-            ### Installation
-            One-liner installers for your convenience.
+            ### What's New
+            *   For a detailed list of changes, please see the [commit history](https://github.com/${{ github.repository }}/commits/main).
 
-            **Linux / macOS / Termux**
+            ### Installation
+            Convenient one-liner installers are available for your shell.
+
+            **Linux / macOS / Termux (bash/zsh)**
             ```sh
             curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.sh | sh
             ```
@@ -85,8 +106,16 @@ jobs:
             ```powershell
             Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass; iwr https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.ps1 | iex
             ```
+
+            ### Verification
+            You can verify the integrity of the downloaded binaries using the `sha256sums.txt` file attached to this release.
+            For example, on Linux/macOS:
+            ```sh
+            sha256sum --check sha256sums.txt
+            ```
           files: |
             artifacts/btxz-*
+            artifacts/sha256sums.txt
             scripts/install.sh
             scripts/install.ps1
 
@@ -94,6 +123,8 @@ jobs:
         id: update_json
         run: |
           echo "Updating version.json with release asset URLs..."
+          # This command takes the JSON output from the release step, transforms the array of assets
+          # into a simple key-value object (filename: url), and merges it into version.json
           urls_json=$(echo '${{ steps.create_release.outputs.assets }}' | \
             jq -r '[.[] | {key: .name, value: .browser_download_url}] | from_entries')
           jq --argjson urls "$urls_json" '.urls = $urls' version.json > version.json.tmp && mv version.json.tmp version.json
@@ -107,6 +138,7 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add version.json
           
+          # Only commit and push if there are actual changes
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
