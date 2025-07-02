@@ -1,169 +1,114 @@
-# .github/workflows/release.yml
 name: Create and Publish Release
 
 on:
   push:
     branches: [ main ]
     paths:
-      - 'version.json'
-
-env:
-  GO_VERSION: '1.21'
-  GO_SOURCE_FILE: 'btxz/main.go'
+      - version.json
 
 jobs:
-  # ====================================================================
-  # JOB 1: Build binaries for all target platforms in parallel
-  # ====================================================================
-  build:
-    name: Build ${{ matrix.display-name }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # --- Linux Builds ---
-          - display-name: Linux AMD64 (Compatible)
-            os: ubuntu-20.04
-            goos: linux
-            goarch: amd64
-            binary-suffix: compat
-          - display-name: Linux AMD64 (Modern)
-            os: ubuntu-22.04
-            goos: linux
-            goarch: amd64
-            binary-suffix: modern
-            
-          # --- macOS Builds ---
-          - display-name: macOS AMD64
-            os: macos-latest
-            goos: darwin
-            goarch: amd64
-            binary-suffix: ""
-          - display-name: macOS ARM64
-            os: macos-latest
-            goos: darwin
-            goarch: arm64
-            binary-suffix: ""
-
-          # --- Windows Builds ---
-          - display-name: Windows AMD64
-            os: windows-latest
-            goos: windows
-            goarch: amd64
-            binary-suffix: ""
-
+  # ===================================================================
+  # BUILD ON UBUNTU 20.04 (FOR WIDE COMPATIBILITY)
+  # ===================================================================
+  build-compatible:
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-
-      - name: Read version from version.json
+      - name: Read version
         run: echo "VERSION=$(jq -r .version version.json)" >> $GITHUB_ENV
 
       - name: Inject version into Go source
         run: |
-          if [ "${{ runner.os }}" == "Windows" ]; then
-            powershell -Command "(Get-Content ${{ env.GO_SOURCE_FILE }}) | ForEach-Object { $_ -replace '^const version = .*$', 'const version = \"${{ env.VERSION }}\"' } | Set-Content ${{ env.GO_SOURCE_FILE }}"
-          else
-            sed -i.bak "s/const version = .*$/const version = \"${{ env.VERSION }}\"/" ${{ env.GO_SOURCE_FILE }}
-          fi
-          echo "Updated source file content:"
-          cat ${{ env.GO_SOURCE_FILE }} | grep "const version"
+          sed -i "s/^const version = .*$/const version = \"${{ env.VERSION }}\"/" btxz/main.go
           
-      - name: Build the application
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-        run: go build -v -o "release/btxz" ./btxz
-
-      - name: Define final binary name
-        id: naming
+      - name: Build cross-platform binaries (Compatible)
         run: |
-          # If a suffix exists (like 'compat'), add a dash. Otherwise, it's empty.
-          SUFFIX_DASH=""
-          if [ -n "${{ matrix.binary-suffix }}" ]; then
-            SUFFIX_DASH="-${{ matrix.binary-suffix }}"
-          fi
-          # Final name, e.g., btxz-linux-amd64-compat
-          echo "filename=btxz-${{ matrix.goos }}-${{ matrix.goarch }}${SUFFIX_DASH}" >> $GITHUB_ENV
+          chmod +x scripts/build.sh
+          # Pass 'compat' as the suffix
+          scripts/build.sh ${{ env.VERSION }} compat
 
-      - name: Package the binary
-        run: |
-          FILENAME_WITH_EXT=""
-          if [ "${{ runner.os }}" == "Windows" ]; then
-            FILENAME_WITH_EXT="${{ env.filename }}.zip"
-            7z a "release/${FILENAME_WITH_EXT}" "./release/btxz.exe"
-          else
-            FILENAME_WITH_EXT="${{ env.filename }}.tar.gz"
-            tar -czvf "release/${FILENAME_WITH_EXT}" -C release btxz
-          fi
-          echo "ARTIFACT_PATH=release/${FILENAME_WITH_EXT}" >> $GITHUB_ENV
-
-      - name: Upload the artifact for the release job
+      - name: Upload compatible artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: btxz-binary-${{ env.filename }}
-          path: ${{ env.ARTIFACT_PATH }}
-          retention-days: 1
+          name: compatible-binaries
+          path: artifacts/
 
-  # ====================================================================
-  # JOB 2: Collect all binaries and create a single GitHub Release
-  # ====================================================================
+  # ===================================================================
+  # BUILD ON UBUNTU 22.04 (FOR MODERN SYSTEMS)
+  # ===================================================================
+  build-modern:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Read version
+        run: echo "VERSION=$(jq -r .version version.json)" >> $GITHUB_ENV
+
+      - name: Inject version into Go source
+        run: |
+          sed -i "s/^const version = .*$/const version = \"${{ env.VERSION }}\"/" btxz/main.go
+
+      - name: Build cross-platform binaries (Modern)
+        run: |
+          chmod +x scripts/build.sh
+          # Pass 'modern' as the suffix
+          scripts/build.sh ${{ env.VERSION }} modern
+
+      - name: Upload modern artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: modern-binaries
+          path: artifacts/
+
+  # ===================================================================
+  # COLLECT ALL BINARIES AND CREATE A SINGLE RELEASE
+  # ===================================================================
   release:
-    name: Create GitHub Release
-    needs: build
+    # This job runs only after both build jobs are successful
+    needs: [build-compatible, build-modern]
     runs-on: ubuntu-latest
     permissions:
-      contents: write 
+      contents: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 
+          fetch-depth: 0
 
-      - name: Set up JQ
-        uses: dcarbone/install-jq-action@v2.0.1
-      
       - name: Read version
         run: echo "VERSION=$(jq -r .version version.json)" >> $GITHUB_ENV
-
-      - name: Get Release Notes from Commit Message
+        
+      - name: Get Release Notes from Commit
         id: get_notes
         run: |
-          # Use the commit message that triggered the workflow as the release body
           COMMIT_MSG=$(git log -1 --pretty='format:%B' -- version.json)
           echo "NOTES<<EOF" >> $GITHUB_ENV
           echo "${COMMIT_MSG}" >> $GITHUB_ENV
-          echo "" >> $GITHUB_ENV
-          echo "---" >> $GITHUB_ENV
-          echo "### Installation & Verification" >> $GITHUB_ENV
-          echo "Binaries for multiple platforms are attached. The **Linux (Compatible)** build is recommended for the widest compatibility. Verify downloads using the \`sha256sums.txt\` file." >> $GITHUB_ENV
-          echo '```sh' >> $GITHUB_ENV
-          echo 'sha256sum --check sha256sums.txt' >> $GITHUB_ENV
-          echo '```' >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
-      - name: Download all built binaries
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: dist # Download all artifacts into a 'dist' folder
-          pattern: btxz-binary-*
-          merge-multiple: true
-
-      - name: Generate Checksums for all files
+          # Download all artifacts from both build jobs into a single directory
+          path: combined-artifacts
+          # This merges 'compatible-binaries' and 'modern-binaries' folders
+          merge-multiple: true 
+          
+      - name: Generate checksums
         run: |
-          cd dist
-          sha256sum * > sha256sums.txt
-          echo "--- Generated Checksums ---"
-          cat sha256sums.txt
-          cd ..
-
+         
+          chmod +x scripts/generate-checksums.sh
+  
+          mkdir -p artifacts
+          mv combined-artifacts/* artifacts/
+          scripts/generate-checksums.sh
+    
+          mv sha256sums.txt ..
+          
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v2
@@ -172,15 +117,15 @@ jobs:
           name: "Release v${{ env.VERSION }}"
           body: ${{ steps.get_notes.outputs.NOTES }}
           files: |
-            dist/*
+            artifacts/*
+            sha256sums.txt
             scripts/install.sh
             scripts/install.ps1
 
-      - name: Update version.json with Release URLs
+      - name: Update version.json with download URLs
         run: |
           urls_json=$(echo '${{ steps.create_release.outputs.assets }}' | jq -r '[.[] | {key: .name, value: .browser_download_url}] | from_entries')
           jq --argjson urls "$urls_json" '.urls = $urls' version.json > version.json.tmp && mv version.json.tmp version.json
-          echo "--- Updated version.json ---"
           cat version.json
 
       - name: Commit and push updated version.json
