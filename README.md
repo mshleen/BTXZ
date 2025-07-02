@@ -199,8 +199,7 @@ The security of BTXZ™ is a top priority. If you discover a security vulnerabil
 
 **Please do not open a public GitHub issue for security-related concerns.**
 
-Instead, send a detailed report directly to:
-**`BlackTechX@proton.me`**
+Instead, send a detailed report directly to: [me](mailto:BlackTechX@proton.me)
 
 We will make every effort to respond to your report in a timely manner.
 
