@@ -1,8 +1,7 @@
 #!/bin/bash
 
-# --- Script Configuration ---
-# set -e: Exit immediately if a command exits with a non-zero status.
-# set -x: Print each command and its arguments as it is executed. Excellent for debugging.
+# set -e: Exit immediately if a command fails.
+# set -x: Print each command before it is executed, for excellent debugging.
 set -e
 set -x
 
@@ -15,7 +14,6 @@ PLATFORMS=("windows/amd64" "linux/amd64" "darwin/amd64" "darwin/arm64")
 # --- Validation ---
 if [ -z "$VERSION" ]; then
   echo "Error: No version number provided."
-  echo "Usage: ./scripts/build.sh <version>"
   exit 1
 fi
 
@@ -24,12 +22,9 @@ echo "Starting build process for version v${VERSION}..."
 rm -rf "${OUTPUT_DIR}"
 mkdir -p "${OUTPUT_DIR}"
 
-# --- Define Build Flags using a Bash Array ---
-# This is the most robust way to handle arguments with spaces or special characters.
-# It prevents the shell from performing word-splitting on the flags.
-# We use double quotes around the version string to allow variable expansion.
+# Define build flags using a Bash Array. This is the most robust method.
 LDFLAGS_ARRAY=(
-  "-ldflags=-X"
+  "-ldflags=-X" 
   "main.version=${VERSION}"
 )
 
@@ -45,10 +40,8 @@ for platform in "${PLATFORMS[@]}"; do
 
   echo "--> Building for ${GOOS}/${GOARCH}..."
   
-  # Execute the build command.
-  # When "${LDFLAGS_ARRAY[@]}" is expanded, the shell treats each element
-  # of the array as a separate, perfectly quoted argument.
-  # This correctly results in: go build ... -ldflags=-X "main.version=1.0.0" ...
+  # Execute the build command using the array for flags.
+  # This prevents all quoting and word-splitting issues.
   env GOOS="$GOOS" GOARCH="$GOARCH" go build \
     -v \
     "${LDFLAGS_ARRAY[@]}" \
@@ -56,6 +49,4 @@ for platform in "${PLATFORMS[@]}"; do
     "./${SOURCE_DIR}"
 done
 
-echo ""
 echo "✅ Build process completed successfully."
-echo "Artifacts are located in the '${OUTPUT_DIR}' directory."
