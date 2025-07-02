@@ -1,10 +1,10 @@
-# .github/workflows/release.yml
 name: Create and Publish Release
 
 on:
   push:
     branches: [ main ]
-    paths: [ 'version.json' ]
+    paths:
+      - version.json
 
 jobs:
   build-and-release:
@@ -18,29 +18,27 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.21'
-          cache-dependency-path: 'btxz/go.sum'
-
       - name: Read version
-        id: version
+        id: ver
         run: |
-          v=$(jq -r '.version' version.json)
-          echo "VERSION=${v}" >> $GITHUB_ENV
-          echo "Read version v${v}"
+          v=$(jq -r .version version.json)
+          echo "VERSION=$v" >> $GITHUB_ENV
+
+      - name: Inject version into Go source
+        run: |
+          # Replace the line starting with 'const version'
+          sed -i \
+            "s/^const version = .*$/const version = \"${{ env.VERSION }}\"/" \
+            btxz/main.go
 
       - name: Make build script executable
-        run: chmod +x ./scripts/build.sh
+        run: chmod +x scripts/build.sh
 
       - name: Build cross-platform binaries
         run: ./scripts/build.sh ${{ env.VERSION }}
 
       - name: Generate checksums
         run: ./scripts/generate-checksums.sh
-
-     
 
       - name: Create GitHub Release
         id: create_release
