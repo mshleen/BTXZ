@@ -31,17 +31,15 @@ jobs:
             "s/^const version = .*$/const version = \"${{ env.VERSION }}\"/" \
             btxz/main.go
 
-      - name: Make build script executable
-        run: chmod +x scripts/build.sh
-
       - name: Build cross-platform binaries
         run: |
-          chmod +x scripts/build.sh
+          chmod +x scripts/build.sh scripts/generate-checksums.sh
           scripts/build.sh ${{ env.VERSION }}
 
-
       - name: Generate checksums
-        run: ./scripts/generate-checksums.sh
+        run: |
+          chmod +x scripts/generate-checksums.sh
+          scripts/generate-checksums.sh
 
       - name: Create GitHub Release
         id: create_release
