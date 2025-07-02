@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"btxz-go/core"
-	"btxz-go/update"
+	"btxz/core"
+	"btxz/update"
 
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
