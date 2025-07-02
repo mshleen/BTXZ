@@ -46,7 +46,6 @@
 | :--- | :--- |
 | **🛡️ Military-Grade Encryption** | Utilizes **AES-256-GCM** with a key derived via **Argon2id** (the winner of the Password Hashing Competition). This provides authenticated encryption, protecting against tampering and ensuring data integrity. |
 | **🗜️ High-Ratio Compression** | Employs the robust **XZ (LZMA2)** algorithm to achieve superior compression ratios, saving you valuable disk space compared to standard Zip or Gzip. |
-|
 | **🔄 Seamless Self-Updating** | The `btxz update` command fetches the latest secure release directly from GitHub and seamlessly replaces the current executable, keeping you up-to-date with one command. |
 | **🔒 Secure by Design** | Built to be resilient against malformed archives. It's hardened against path traversal attacks and will safely skip corrupted files during extraction instead of halting or crashing. |
 
