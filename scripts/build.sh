@@ -1,16 +1,15 @@
 #!/bin/bash
 
-# Exit immediately if a command exits with a non-zero status.
+# --- Script Configuration ---
+# set -e: Exit immediately if a command exits with a non-zero status.
+# set -x: Print each command and its arguments as it is executed. Excellent for debugging.
 set -e
+set -x
 
-# --- Configuration ---
-# The version number is passed as the first argument to the script
+# --- Parameters ---
 VERSION="$1"
-# The path to your Go project's main package, relative to the repository root
 SOURCE_DIR="btxz"
-# The directory where build artifacts will be stored
 OUTPUT_DIR="artifacts"
-# List of platforms to build for (format: "os/arch")
 PLATFORMS=("windows/amd64" "linux/amd64" "darwin/amd64" "darwin/arm64")
 
 # --- Validation ---
@@ -22,22 +21,23 @@ fi
 
 # --- Build Process ---
 echo "Starting build process for version v${VERSION}..."
-
-# Clean up previous builds and create the output directory
 rm -rf "${OUTPUT_DIR}"
 mkdir -p "${OUTPUT_DIR}"
 
-# Set the linker flags to embed the version number in the binary.
-# The quotes are crucial to ensure this is treated as a single argument.
-LDFLAGS="-ldflags=-X 'main.version=${VERSION}'"
+# --- Define Build Flags using a Bash Array ---
+# This is the most robust way to handle arguments with spaces or special characters.
+# It prevents the shell from performing word-splitting on the flags.
+# We use double quotes around the version string to allow variable expansion.
+LDFLAGS_ARRAY=(
+  "-ldflags=-X"
+  "main.version=${VERSION}"
+)
 
-# Loop through each platform and build the binary
+# --- Main Build Loop ---
 for platform in "${PLATFORMS[@]}"; do
-  # Split the platform string into OS and architecture
   GOOS=$(echo "$platform" | cut -d'/' -f1)
   GOARCH=$(echo "$platform" | cut -d'/' -f2)
 
-  # Construct the output file name
   output_name="btxz-${GOOS}-${GOARCH}"
   if [ "$GOOS" = "windows" ]; then
     output_name+='.exe'
@@ -45,9 +45,15 @@ for platform in "${PLATFORMS[@]}"; do
 
   echo "--> Building for ${GOOS}/${GOARCH}..."
   
-  # Execute the build command. Note that we are building the SOURCE_DIR from the root.
-  # The -v flag provides verbose output for better logging.
-  env GOOS="$GOOS" GOARCH="$GOARCH" go build -v ${LDFLAGS} -o "${OUTPUT_DIR}/${output_name}" "./${SOURCE_DIR}"
+  # Execute the build command.
+  # When "${LDFLAGS_ARRAY[@]}" is expanded, the shell treats each element
+  # of the array as a separate, perfectly quoted argument.
+  # This correctly results in: go build ... -ldflags=-X "main.version=1.0.0" ...
+  env GOOS="$GOOS" GOARCH="$GOARCH" go build \
+    -v \
+    "${LDFLAGS_ARRAY[@]}" \
+    -o "${OUTPUT_DIR}/${output_name}" \
+    "./${SOURCE_DIR}"
 done
 
 echo ""
