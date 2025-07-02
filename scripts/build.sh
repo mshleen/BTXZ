@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Usage: scripts/build.sh <version>
 VERSION="$1"
-SRC="btxz"
-OUT="artifacts"
+ARTIFACTS="artifacts"
+PLATFORMS=(windows/amd64 linux/amd64 darwin/amd64 darwin/arm64)
 
 if [[ -z "$VERSION" ]]; then
   echo "Usage: $0 <version>"
@@ -11,22 +12,23 @@ if [[ -z "$VERSION" ]]; then
 fi
 
 echo "▶ Building BTXZ v${VERSION}"
-rm -rf "${OUT}" && mkdir -p "${OUT}"
+rm -rf "${ARTIFACTS}"
+mkdir -p "${ARTIFACTS}"
 
-platforms=( windows/amd64 linux/amd64 darwin/amd64 darwin/arm64 )
-for p in "${platforms[@]}"; do
-  GOOS=${p%%/*} GOARCH=${p#*/}
-  bin="btxz-${GOOS}-${GOARCH}"
-  [[ $GOOS == windows ]] && bin+=".exe"
+# Move into the btxz/ dir where go.mod lives
+# "$(dirname "$0")" is the scripts/ folder, so ../btxz is the module root
+cd "$(dirname "$0")/../btxz"
 
-  echo "  • $GOOS/$GOARCH → $bin"
-  (
-    cd "${SRC}"
-    env GOOS="$GOOS" GOARCH="$GOARCH" \
-      go build -v \
-      -o "../${OUT}/${bin}" \
-      .
-  )
+for platform in "${PLATFORMS[@]}"; do
+  GOOS="${platform%/*}"
+  GOARCH="${platform#*/}"
+
+  BIN="../${ARTIFACTS}/btxz-${GOOS}-${GOARCH}"
+  [[ "$GOOS" == windows ]] && BIN+=".exe"
+
+  echo "  • $GOOS/$GOARCH → $(basename "$BIN")"
+  env GOOS="$GOOS" GOARCH="$GOARCH" \
+    go build -v -o "$BIN" .
 done
 
-echo "✅ Build complete; artifacts in ${OUT}/"
+echo "✅ Done — artifacts in ${ARTIFACTS}/"
