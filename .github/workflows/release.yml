@@ -35,7 +35,10 @@ jobs:
         run: chmod +x scripts/build.sh
 
       - name: Build cross-platform binaries
-        run: ./scripts/build.sh ${{ env.VERSION }}
+        working-directory: btxz
+        run: |
+          ../scripts/build.sh ${{ env.VERSION }}
+
 
       - name: Generate checksums
         run: ./scripts/generate-checksums.sh
