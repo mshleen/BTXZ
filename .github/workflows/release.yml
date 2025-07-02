@@ -1,45 +1,168 @@
+# .github/workflows/release.yml
 name: Create and Publish Release
 
 on:
   push:
     branches: [ main ]
     paths:
-      - version.json
+      - 'version.json'
+
+env:
+  GO_VERSION: '1.21'
+  GO_SOURCE_FILE: 'btxz/main.go'
 
 jobs:
-  build-and-release:
+  # ====================================================================
+  # JOB 1: Build binaries for all target platforms in parallel
+  # ====================================================================
+  build:
+    name: Build ${{ matrix.display-name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # --- Linux Builds ---
+          - display-name: Linux AMD64 (Compatible)
+            os: ubuntu-20.04
+            goos: linux
+            goarch: amd64
+            binary-suffix: compat
+          - display-name: Linux AMD64 (Modern)
+            os: ubuntu-22.04
+            goos: linux
+            goarch: amd64
+            binary-suffix: modern
+            
+          # --- macOS Builds ---
+          - display-name: macOS AMD64
+            os: macos-latest
+            goos: darwin
+            goarch: amd64
+            binary-suffix: ""
+          - display-name: macOS ARM64
+            os: macos-latest
+            goos: darwin
+            goarch: arm64
+            binary-suffix: ""
+
+          # --- Windows Builds ---
+          - display-name: Windows AMD64
+            os: windows-latest
+            goos: windows
+            goarch: amd64
+            binary-suffix: ""
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Read version from version.json
+        run: echo "VERSION=$(jq -r .version version.json)" >> $GITHUB_ENV
+
+      - name: Inject version into Go source
+        run: |
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            powershell -Command "(Get-Content ${{ env.GO_SOURCE_FILE }}) | ForEach-Object { $_ -replace '^const version = .*$', 'const version = \"${{ env.VERSION }}\"' } | Set-Content ${{ env.GO_SOURCE_FILE }}"
+          else
+            sed -i.bak "s/const version = .*$/const version = \"${{ env.VERSION }}\"/" ${{ env.GO_SOURCE_FILE }}
+          fi
+          echo "Updated source file content:"
+          cat ${{ env.GO_SOURCE_FILE }} | grep "const version"
+          
+      - name: Build the application
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: go build -v -o "release/btxz" ./btxz
+
+      - name: Define final binary name
+        id: naming
+        run: |
+          # If a suffix exists (like 'compat'), add a dash. Otherwise, it's empty.
+          SUFFIX_DASH=""
+          if [ -n "${{ matrix.binary-suffix }}" ]; then
+            SUFFIX_DASH="-${{ matrix.binary-suffix }}"
+          fi
+          # Final name, e.g., btxz-linux-amd64-compat
+          echo "filename=btxz-${{ matrix.goos }}-${{ matrix.goarch }}${SUFFIX_DASH}" >> $GITHUB_ENV
+
+      - name: Package the binary
+        run: |
+          FILENAME_WITH_EXT=""
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            FILENAME_WITH_EXT="${{ env.filename }}.zip"
+            7z a "release/${FILENAME_WITH_EXT}" "./release/btxz.exe"
+          else
+            FILENAME_WITH_EXT="${{ env.filename }}.tar.gz"
+            tar -czvf "release/${FILENAME_WITH_EXT}" -C release btxz
+          fi
+          echo "ARTIFACT_PATH=release/${FILENAME_WITH_EXT}" >> $GITHUB_ENV
+
+      - name: Upload the artifact for the release job
+        uses: actions/upload-artifact@v4
+        with:
+          name: btxz-binary-${{ env.filename }}
+          path: ${{ env.ARTIFACT_PATH }}
+          retention-days: 1
+
+  # ====================================================================
+  # JOB 2: Collect all binaries and create a single GitHub Release
+  # ====================================================================
+  release:
+    name: Create GitHub Release
+    needs: build
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write 
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 
 
+      - name: Set up JQ
+        uses: dcarbone/install-jq-action@v2.0.1
+      
       - name: Read version
-        id: ver
-        run: |
-          v=$(jq -r .version version.json)
-          echo "VERSION=$v" >> $GITHUB_ENV
+        run: echo "VERSION=$(jq -r .version version.json)" >> $GITHUB_ENV
 
-      - name: Inject version into Go source
+      - name: Get Release Notes from Commit Message
+        id: get_notes
         run: |
-          # Replace the line starting with 'const version'
-          sed -i \
-            "s/^const version = .*$/const version = \"${{ env.VERSION }}\"/" \
-            btxz/main.go
+          # Use the commit message that triggered the workflow as the release body
+          COMMIT_MSG=$(git log -1 --pretty='format:%B' -- version.json)
+          echo "NOTES<<EOF" >> $GITHUB_ENV
+          echo "${COMMIT_MSG}" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "---" >> $GITHUB_ENV
+          echo "### Installation & Verification" >> $GITHUB_ENV
+          echo "Binaries for multiple platforms are attached. The **Linux (Compatible)** build is recommended for the widest compatibility. Verify downloads using the \`sha256sums.txt\` file." >> $GITHUB_ENV
+          echo '```sh' >> $GITHUB_ENV
+          echo 'sha256sum --check sha256sums.txt' >> $GITHUB_ENV
+          echo '```' >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
-      - name: Build cross-platform binaries
-        run: |
-          chmod +x scripts/build.sh scripts/generate-checksums.sh
-          scripts/build.sh ${{ env.VERSION }}
+      - name: Download all built binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: dist # Download all artifacts into a 'dist' folder
+          pattern: btxz-binary-*
+          merge-multiple: true
 
-      - name: Generate checksums
+      - name: Generate Checksums for all files
         run: |
-          chmod +x scripts/generate-checksums.sh
-          scripts/generate-checksums.sh
+          cd dist
+          sha256sum * > sha256sums.txt
+          echo "--- Generated Checksums ---"
+          cat sha256sums.txt
+          cd ..
 
       - name: Create GitHub Release
         id: create_release
@@ -47,37 +170,17 @@ jobs:
         with:
           tag_name: "v${{ env.VERSION }}"
           name: "Release v${{ env.VERSION }}"
-          body: |
-            ## BTXZ™ v${{ env.VERSION }}
-
-            Official release of **BTXZ™ v${{ env.VERSION }}**. See [LICENSE.md](LICENSE.md) for usage terms.
-
-            ### Installation
-            **Linux / macOS / Termux**
-            ```sh
-            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.sh | sh
-            ```
-
-            **Windows (PowerShell)**
-            ```powershell
-            Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass; iwr https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.ps1 | iex
-            ```
-
-            ### Verification
-            Verify binaries using the `sha256sums.txt` file attached to this release.
-            ```sh
-            sha256sum --check sha256sums.txt
-            ```
+          body: ${{ steps.get_notes.outputs.NOTES }}
           files: |
-            artifacts/*
+            dist/*
             scripts/install.sh
             scripts/install.ps1
 
-      # The rest of the workflow remains the same...
-      - name: Update version.json with download URLs
+      - name: Update version.json with Release URLs
         run: |
           urls_json=$(echo '${{ steps.create_release.outputs.assets }}' | jq -r '[.[] | {key: .name, value: .browser_download_url}] | from_entries')
           jq --argjson urls "$urls_json" '.urls = $urls' version.json > version.json.tmp && mv version.json.tmp version.json
+          echo "--- Updated version.json ---"
           cat version.json
 
       - name: Commit and push updated version.json
