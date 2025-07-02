@@ -13,10 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// version is the application's version string.
-// It is set dynamically at build time by the Go linker using -ldflags.
-// The default "dev" is used for local development builds.
-var version = "dev"
+const version = "0.0.0‑dev"  // <-- this will be auto‑replaced by CI
 
 const asciiArtLogo = `BTXZ`
 
