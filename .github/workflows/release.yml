@@ -39,13 +39,10 @@ jobs:
           echo "Read version v${version} from version.json"
 
       - name: Build cross-platform binaries
+            
         run: |
           mkdir -p artifacts
           cd btxz
-
-          # The -ldflags need to be quoted to be treated as a single argument.
-          # We embed the version number into the binary, accessible via `btxz version`.
-          LDFLAGS="-ldflags=-X 'main.version=${{ env.VERSION }}'"
 
           platforms=("windows/amd64" "linux/amd64" "darwin/amd64" "darwin/arm64")
 
@@ -60,12 +57,10 @@ jobs:
             fi
 
             echo "Building for $GOOS/$GOARCH..."
-            # The -v flag adds verbosity to the build process for better logging.
-            # The output path and ldflags are quoted for robustness.
-            env GOOS=$GOOS GOARCH=$GOARCH go build -v ${LDFLAGS} -o "../artifacts/${output_name}" .
+            env GOOS=$GOOS GOARCH=$GOARCH go build -v -ldflags="-X main.version=${VERSION}" -o "../artifacts/${output_name}" .
             if [ $? -ne 0 ]; then
-                echo "An error occurred during build for $GOOS/$GOARCH."
-                exit 1
+              echo "An error occurred during build for $GOOS/$GOARCH."
+              exit 1
             fi
           done
 
