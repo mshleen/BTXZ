@@ -1,5 +1,5 @@
 {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "urls": {
     "sha256sums.txt": "https://github.com/BlackTechX011/BTXZ/releases/download/v1.0.1/sha256sums.txt",
     "btxz-windows-amd64-modern.exe": "https://github.com/BlackTechX011/BTXZ/releases/download/v1.0.1/btxz-windows-amd64-modern.exe",
