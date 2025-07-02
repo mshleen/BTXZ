@@ -21,14 +21,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # Fetch all history for all tags and branches, required for release notes
           fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-          # Improve performance by caching Go dependencies
           cache-dependency-path: 'btxz/go.sum'
 
       - name: Read version from version.json
@@ -39,46 +37,20 @@ jobs:
           echo "Read version v${version} from version.json"
 
       - name: Build cross-platform binaries
-            
-        run: |
-          mkdir -p artifacts
-          cd btxz
-
-          platforms=("windows/amd64" "linux/amd64" "darwin/amd64" "darwin/arm64")
-
-          for platform in "${platforms[@]}"; do
-            platform_split=(${platform//\// })
-            GOOS=${platform_split[0]}
-            GOARCH=${platform_split[1]}
-            
-            output_name="btxz-${GOOS}-${GOARCH}"
-            if [ "$GOOS" = "windows" ]; then
-              output_name+='.exe'
-            fi
-
-            echo "Building for $GOOS/$GOARCH..."
-            env GOOS=$GOOS GOARCH=$GOARCH go build -v -ldflags="-X main.version=${VERSION}" -o "../artifacts/${output_name}" .
-            if [ $? -ne 0 ]; then
-              echo "An error occurred during build for $GOOS/$GOARCH."
-              exit 1
-            fi
-          done
+        # This step now simply executes our robust build script, passing the version.
+        run: ./scripts/build.sh ${{ env.VERSION }}
 
       - name: Generate Checksums
-        run: |
-          cd artifacts
-          sha256sum btxz-* > sha256sums.txt
-          echo "Generated checksums:"
-          cat sha256sums.txt
+        # This step executes our checksum script.
+        run: ./scripts/generate-checksums.sh
 
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          # Use the version from the version.json file for the tag and release name
           tag_name: "v${{ env.VERSION }}"
           name: "Release v${{ env.VERSION }}"
-          # Use the professional release note template below
+          # Using the same professional release notes from before.
           body: |
             ## BTXZ™ v${{ env.VERSION }}
 
@@ -87,7 +59,7 @@ jobs:
             See [LICENSE.md](LICENSE.md) for usage terms.
 
             ### What's New
-            *   For a detailed list of changes, please see the [commit history](https://github.com/${{ github.repository }}/commits/main).
+            *   For a detailed list of changes, please see the [commit history](https://github.com/${{ github.repository }}/commits/v${{ env.VERSION }}).
 
             ### Installation
             Convenient one-liner installers are available for your shell.
@@ -108,6 +80,7 @@ jobs:
             ```sh
             sha256sum --check sha256sums.txt
             ```
+          # Files to upload, including the new checksums file.
           files: |
             artifacts/btxz-*
             artifacts/sha256sums.txt
@@ -118,8 +91,6 @@ jobs:
         id: update_json
         run: |
           echo "Updating version.json with release asset URLs..."
-          # This command takes the JSON output from the release step, transforms the array of assets
-          # into a simple key-value object (filename: url), and merges it into version.json
           urls_json=$(echo '${{ steps.create_release.outputs.assets }}' | \
             jq -r '[.[] | {key: .name, value: .browser_download_url}] | from_entries')
           jq --argjson urls "$urls_json" '.urls = $urls' version.json > version.json.tmp && mv version.json.tmp version.json
@@ -133,7 +104,6 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add version.json
           
-          # Only commit and push if there are actual changes
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
