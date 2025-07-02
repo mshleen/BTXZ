@@ -1,4 +1,4 @@
-module btxz-go
+module btxz
 
 go 1.23.2
 
