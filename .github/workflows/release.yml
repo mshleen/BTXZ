@@ -8,25 +8,44 @@ on:
 
 jobs:
   # ===================================================================
-  # BUILD ON UBUNTU 20.04 (FOR WIDE COMPATIBILITY)
+  # BUILD ON UBUNTU 20.04 (FOR WIDE COMPATIBILITY) - USING DOCKER
   # ===================================================================
   build-compatible:
-    runs-on: ubuntu-20.04
+    # This job now runs on a standard runner, but executes its steps inside a container.
+    runs-on: ubuntu-latest
+    container:
+      # This specifies the Docker image to use. All steps will run inside it.
+      image: ubuntu:20.04
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install Dependencies in Container
+        # The base ubuntu:20.04 image is minimal. We must install git, jq, and build tools.
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git jq build-essential
+          
+      - name: Set up Go
+        # actions/setup-go works perfectly inside a job container.
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
 
       - name: Read version
         run: echo "VERSION=$(jq -r .version version.json)" >> $GITHUB_ENV
 
       - name: Inject version into Go source
+        # Your original sed command works without changes.
         run: |
           sed -i "s/^const version = .*$/const version = \"${{ env.VERSION }}\"/" btxz/main.go
           
       - name: Build cross-platform binaries (Compatible)
+        # Your original build script works without changes.
         run: |
           chmod +x scripts/build.sh
-          # Pass 'compat' as the suffix
+          # We still pass 'compat' as the suffix for clear naming.
           scripts/build.sh ${{ env.VERSION }} compat
 
       - name: Upload compatible artifacts
@@ -36,13 +55,18 @@ jobs:
           path: artifacts/
 
   # ===================================================================
-  # BUILD ON UBUNTU 22.04 (FOR MODERN SYSTEMS)
+  # BUILD ON UBUNTU 22.04 (FOR MODERN SYSTEMS) - NO CHANGES NEEDED
   # ===================================================================
   build-modern:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
 
       - name: Read version
         run: echo "VERSION=$(jq -r .version version.json)" >> $GITHUB_ENV
@@ -54,7 +78,7 @@ jobs:
       - name: Build cross-platform binaries (Modern)
         run: |
           chmod +x scripts/build.sh
-          # Pass 'modern' as the suffix
+          # We use a 'modern' suffix to differentiate the binaries.
           scripts/build.sh ${{ env.VERSION }} modern
 
       - name: Upload modern artifacts
@@ -64,10 +88,9 @@ jobs:
           path: artifacts/
 
   # ===================================================================
-  # COLLECT ALL BINARIES AND CREATE A SINGLE RELEASE
+  # COLLECT ALL BINARIES AND CREATE A SINGLE RELEASE - NO CHANGES NEEDED
   # ===================================================================
   release:
-    # This job runs only after both build jobs are successful
     needs: [build-compatible, build-modern]
     runs-on: ubuntu-latest
     permissions:
@@ -93,20 +116,17 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          # Download all artifacts from both build jobs into a single directory
           path: combined-artifacts
-          # This merges 'compatible-binaries' and 'modern-binaries' folders
           merge-multiple: true 
           
       - name: Generate checksums
         run: |
-         
-          chmod +x scripts/generate-checksums.sh
-  
+          # Create the artifacts directory so the checksum script finds the files
           mkdir -p artifacts
           mv combined-artifacts/* artifacts/
+          chmod +x scripts/generate-checksums.sh
           scripts/generate-checksums.sh
-    
+          # Move the checksums file for the release step
           mv sha256sums.txt ..
           
       - name: Create GitHub Release
