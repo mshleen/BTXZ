@@ -1,5 +1,3 @@
-# .github/workflows/release.yml
-
 name: Create and Publish Release
 
 on:
@@ -10,7 +8,7 @@ on:
       - 'version.json'
 
 permissions:
-  contents: write # Required to create releases and push a commit
+  contents: write
 
 jobs:
   build-and-release:
@@ -36,12 +34,11 @@ jobs:
           echo "VERSION=${version}" >> $GITHUB_ENV
           echo "Read version v${version} from version.json"
 
+      # THIS IS THE CRITICAL STEP. IT MUST BE THIS SIMPLE.
       - name: Build cross-platform binaries
-        # This step now simply executes our robust build script, passing the version.
         run: ./scripts/build.sh ${{ env.VERSION }}
 
       - name: Generate Checksums
-        # This step executes our checksum script.
         run: ./scripts/generate-checksums.sh
 
       - name: Create GitHub Release
@@ -50,21 +47,13 @@ jobs:
         with:
           tag_name: "v${{ env.VERSION }}"
           name: "Release v${{ env.VERSION }}"
-          # Using the same professional release notes from before.
           body: |
             ## BTXZ™ v${{ env.VERSION }}
 
-            This is the official release of **BTXZ™ v${{ env.VERSION }}**.
-
-            See [LICENSE.md](LICENSE.md) for usage terms.
-
-            ### What's New
-            *   For a detailed list of changes, please see the [commit history](https://github.com/${{ github.repository }}/commits/v${{ env.VERSION }}).
+            Official release of **BTXZ™ v${{ env.VERSION }}**. See [LICENSE.md](LICENSE.md) for usage terms.
 
             ### Installation
-            Convenient one-liner installers are available for your shell.
-
-            **Linux / macOS / Termux (bash/zsh)**
+            **Linux / macOS / Termux**
             ```sh
             curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.sh | sh
             ```
@@ -75,27 +64,20 @@ jobs:
             ```
 
             ### Verification
-            You can verify the integrity of the downloaded binaries using the `sha256sums.txt` file attached to this release.
-            For example, on Linux/macOS:
+            Verify binaries using the `sha256sums.txt` file attached to this release.
             ```sh
             sha256sum --check sha256sums.txt
             ```
-          # Files to upload, including the new checksums file.
           files: |
-            artifacts/btxz-*
-            artifacts/sha256sums.txt
+            artifacts/*
             scripts/install.sh
             scripts/install.ps1
 
+      # The rest of the workflow remains the same...
       - name: Update version.json with download URLs
-        id: update_json
         run: |
-          echo "Updating version.json with release asset URLs..."
-          urls_json=$(echo '${{ steps.create_release.outputs.assets }}' | \
-            jq -r '[.[] | {key: .name, value: .browser_download_url}] | from_entries')
+          urls_json=$(echo '${{ steps.create_release.outputs.assets }}' | jq -r '[.[] | {key: .name, value: .browser_download_url}] | from_entries')
           jq --argjson urls "$urls_json" '.urls = $urls' version.json > version.json.tmp && mv version.json.tmp version.json
-          
-          echo "Updated version.json content:"
           cat version.json
 
       - name: Commit and push updated version.json
@@ -103,7 +85,6 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add version.json
-          
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
