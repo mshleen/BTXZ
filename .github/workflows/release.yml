@@ -1,0 +1,127 @@
+name: Create and Publish Release
+
+# This workflow is triggered on a push to the main branch,
+# but ONLY if the version.json file was modified.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'version.json'
+
+# Explicitly set permissions for the GITHUB_TOKEN for security best practices.
+permissions:
+  contents: write # To create a release and push the updated version.json
+
+jobs:
+  build-and-release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Fetch all history so we can push back to the repo.
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache-dependency-path: 'btxz/go.sum'
+
+      - name: Read version from version.json
+        id: version_reader
+        run: |
+          version=$(jq -r '.version' version.json)
+          echo "VERSION=${version}" >> $GITHUB_ENV
+          echo "Read version v${version} from version.json"
+
+      - name: Build cross-platform binaries
+        run: |
+          mkdir -p artifacts
+          cd btxz
+
+          # This ldflags will inject the version number into the 'main.version' variable
+          # at compile time. This is the standard way to handle versioning in Go.
+          LDFLAGS="-ldflags=-X 'main.version=${{ env.VERSION }}'"
+
+          platforms=("windows/amd64" "linux/amd64" "darwin/amd64" "darwin/arm64")
+
+          for platform in "${platforms[@]}"; do
+            platform_split=(${platform//\// })
+            GOOS=${platform_split[0]}
+            GOARCH=${platform_split[1]}
+            
+            output_name="btxz-${GOOS}-${GOARCH}"
+            if [ $GOOS = "windows" ]; then
+              output_name+='.exe'
+            fi
+
+            echo "Building for $GOOS/$GOARCH..."
+            env GOOS=$GOOS GOARCH=$GOARCH go build $LDFLAGS -o ../artifacts/${output_name} .
+            if [ $? -ne 0 ]; then
+                echo "An error occurred during build for $GOOS/$GOARCH."
+                exit 1
+            fi
+          done
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ env.VERSION }}"
+          name: "BTXZ™ v${{ env.VERSION }}"
+          body: |
+            Official release for **BTXZ™ v${{ env.VERSION }}**.
+
+            See [LICENSE.md](LICENSE.md) for usage terms.
+
+            ### Installation
+            One-liner installers for your convenience.
+
+            **Linux / macOS / Termux**
+            ```sh
+            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.sh | sh
+            ```
+
+            **Windows (PowerShell)**
+            ```powershell
+            Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass; iwr https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.ps1 | iex
+            ```
+
+          # Upload all compiled binaries from the artifacts directory and the install scripts.
+          files: |
+            artifacts/btxz-*
+            scripts/install.sh
+            scripts/install.ps1
+
+      - name: Update version.json with download URLs
+        id: update_json
+        run: |
+          echo "Updating version.json with release asset URLs..."
+          # This command uses jq to parse the JSON output from the release step,
+          # creating a new JSON object of filename:url pairs.
+          urls_json=$(echo '${{ steps.create_release.outputs.assets }}' | \
+            jq -r '[.[] | {key: .name, value: .browser_download_url}] | from_entries')
+
+          # Atomically merge the new 'urls' object into the existing version.json file.
+          jq --argjson urls "$urls_json" '.urls = $urls' version.json > version.json.tmp && mv version.json.tmp version.json
+          
+          echo "Updated version.json content:"
+          cat version.json
+
+      - name: Commit and push updated version.json
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add version.json
+          
+          # Check if there are changes to commit to avoid empty commits on failure.
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "chore(release): Update asset URLs for v${{ env.VERSION }}"
+            git push
+          fi
