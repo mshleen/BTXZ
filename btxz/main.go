@@ -1,3 +1,5 @@
+// File: main.go
+
 // Package main implements the command-line interface for BTXZ.
 package main
 
@@ -13,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const version = "0.0.0‑dev"  // <-- this will be auto‑replaced by CI
+const version = "0.0.0‑dev" // <-- this will be auto‑replaced by CI
 
 const asciiArtLogo = `BTXZ`
 
@@ -69,23 +71,32 @@ func NewCreateCmd() *cobra.Command {
 	var (
 		outputFile string
 		password   string
+		level      string
 	)
 	createCmd := &cobra.Command{
-		Use:     "create [file/folder...]",
-		Short:   "Create a new secure archive",
-		Long:    `Packages one or more files and/or folders into a single compressed and encrypted .btxz archive.`,
-		Example: `  btxz create ./report.docx ./assets -o my_archive.btxz -p "s3cr3t!"`,
+		Use:   "create [file/folder...]",
+		Short: "Create a new secure archive",
+		Long: `Packages one or more files and/or folders into a single compressed and encrypted .btxz archive.
+New archives are created using the modern v2 format (Zstandard + AES-GCM).`,
+		Example: `  btxz create ./doc.pdf ./images -o archive.btxz -p "s3cr3t!" --level fast`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			printCommandHeader("Secure New Archive")
+			printCommandHeader("Create Secure Archive (v2)")
 
 			if outputFile == "" {
 				handleCmdError("Output file path must be specified with -o or --output.")
 			}
-			promptForPassword(&password, true)
+			// Validate compression level
+			level = strings.ToLower(level)
+			if level != "fast" && level != "default" && level != "best" {
+				handleCmdError("Invalid level '%s'. Must be one of: fast, default, best.", level)
+			}
+			
+			// A password is now required for creation.
+			promptForPassword(&password)
 
 			spinner, _ := pterm.DefaultSpinner.Start(fmt.Sprintf("Processing %d input paths...", len(args)))
-			err := core.CreateArchive(outputFile, args, password, "", true)
+			err := core.CreateArchive(outputFile, args, password, level)
 			spinner.Stop()
 
 			if err != nil {
@@ -93,12 +104,15 @@ func NewCreateCmd() *cobra.Command {
 			}
 			pterm.Success.Println("Archive creation complete.")
 			pterm.DefaultBox.WithTitle("Summary").Println(
-				fmt.Sprintf("Archive: %s\nEncrypted: %t", pterm.Green(outputFile), password != ""),
+				fmt.Sprintf("Archive: %s\nEncrypted: %t\nCompression: %s",
+					pterm.Green(outputFile), true, pterm.Cyan(level)),
 			)
 		},
 	}
 	createCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Path for the new archive file (required)")
-	createCmd.Flags().StringVarP(&password, "password", "p", "", "Password for encryption (prompts if empty)")
+	createCmd.Flags().StringVarP(&password, "password", "p", "", "Password for encryption (prompts if empty, required)")
+	createCmd.Flags().StringVarP(&level, "level", "l", "default", "Compression level (fast, default, best)")
+
 	return createCmd
 }
 
@@ -111,20 +125,24 @@ func NewExtractCmd() *cobra.Command {
 	extractCmd := &cobra.Command{
 		Use:     "extract <archive.btxz>",
 		Short:   "Extract files from an archive",
-		Long:    `Decompresses and decrypts a .btxz archive into the specified directory.`,
+		Long:    `Decompresses and decrypts a .btxz archive into the specified directory. Automatically handles v1 and v2 formats.`,
 		Example: `  btxz extract data.btxz -o ./restored_data`,
 		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			printCommandHeader("Extract BTXZ Archive")
 			archivePath := args[0]
-			promptForPassword(&password, false)
+			
+			// Prompt for password if not provided. Extraction might work on old v1 files without a password.
+			if password == "" {
+				pass, _ := pterm.DefaultInteractiveTextInput.WithMask("*").Show("Enter decryption password (if required)")
+				password = pass
+			}
 
 			spinner, _ := pterm.DefaultSpinner.Start(fmt.Sprintf("Extracting '%s'...", filepath.Base(archivePath)))
 			skippedFiles, err := core.ExtractArchive(archivePath, outputDir, password)
 			spinner.Stop()
 
 			if err != nil {
-				// Provide more user-friendly error messages for common failures.
 				if strings.Contains(err.Error(), "decryption failed") {
 					handleCmdError("Decryption failed. Please check if your password is correct.")
 				}
@@ -156,13 +174,17 @@ func NewListCmd() *cobra.Command {
 	listCmd := &cobra.Command{
 		Use:     "list <archive.btxz>",
 		Short:   "List the contents of an archive",
-		Long:    `Shows a list of files and folders inside a .btxz archive without extracting them.`,
+		Long:    `Shows a list of files and folders inside a .btxz archive without extracting them. Automatically handles v1 and v2 formats.`,
 		Example: `  btxz list my_archive.btxz -p "s3cr3t!"`,
 		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			pterm.DefaultHeader.WithMargin(2).Println("List Archive Contents")
 			archivePath := args[0]
-			promptForPassword(&password, false)
+			
+			if password == "" {
+				pass, _ := pterm.DefaultInteractiveTextInput.WithMask("*").Show("Enter decryption password (if required)")
+				password = pass
+			}
 
 			spinner, _ := pterm.DefaultSpinner.Start("Reading archive metadata...")
 			contents, err := core.ListArchiveContents(archivePath, password)
@@ -212,19 +234,15 @@ func handleCmdError(format string, a ...interface{}) {
 }
 
 // promptForPassword checks if a password string is empty and, if so, prompts
-// the user for input with a masked field.
-func promptForPassword(password *string, isEncrypting bool) {
+// the user for it. For v2 creation, an empty password after the prompt is a fatal error.
+func promptForPassword(password *string) {
 	if *password == "" {
-		promptText := "Enter decryption password (if required)"
-		if isEncrypting {
-			pterm.Info.Println("Password not provided via flag.")
-			promptText = "Enter encryption password (leave blank for none)"
-		}
-		pass, _ := pterm.DefaultInteractiveTextInput.WithMask("*").Show(promptText)
+		pterm.Info.Println("Password not provided via flag.")
+		pass, _ := pterm.DefaultInteractiveTextInput.WithMask("*").Show("Enter encryption password (required)")
 		*password = pass
 	}
-	if isEncrypting && *password == "" {
-		pterm.Warning.Println("No password provided. The archive will be created WITHOUT encryption.")
+	if *password == "" {
+		handleCmdError("A password is required to create a secure archive.")
 	}
 }
 
