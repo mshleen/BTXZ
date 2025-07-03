@@ -73,7 +73,9 @@ type ArchiveEntry struct {
 }
 
 
-func CreateArchive(archivePath string, inputPaths []string, password string, level string, encryptNames bool) error {
+// CreateArchiveV1 is the v1 implementation for creating an archive. It is kept for
+// potential future use or testing but is not called by the main dispatcher for new archives.
+func CreateArchiveV1(archivePath string, inputPaths []string, password string) error {
 	if len(inputPaths) == 0 {
 		return errors.New("no input files or folders specified")
 	}
@@ -191,9 +193,9 @@ func addFileToTar(tw *tar.Writer, filePath, basePath string) error {
 	return nil
 }
 
-// getDecryptedReader opens an archive, validates its header, handles decryption,
+// getDecryptedReaderV1 opens a v1 archive, validates its header, handles decryption,
 // and returns a reader for the compressed payload (the TAR stream).
-func getDecryptedReader(archivePath string, password string) (io.ReadCloser, error) {
+func getDecryptedReaderV1(archivePath string, password string) (io.ReadCloser, error) {
 	archiveFile, err := os.Open(archivePath)
 	if err != nil {
 		return nil, err
@@ -202,17 +204,13 @@ func getDecryptedReader(archivePath string, password string) (io.ReadCloser, err
 	var header BtxzHeaderV1
 	if err := binary.Read(archiveFile, binary.LittleEndian, &header); err != nil {
 		archiveFile.Close()
-		return nil, fmt.Errorf("failed to read archive header: %w", err)
+		return nil, fmt.Errorf("failed to read v1 archive header: %w", err)
 	}
-
-	if string(header.Signature[:]) != magicSignature {
+	
+	// Basic validation is done by the dispatcher, but we can keep it here for direct calls.
+	if string(header.Signature[:]) != magicSignature || header.Version != coreVersionV1 {
 		archiveFile.Close()
-		return nil, errors.New("not a valid BTXZ archive")
-	}
-	// This is the key for future-proofing: check the version.
-	if header.Version != coreVersionV1 {
-		archiveFile.Close()
-		return nil, fmt.Errorf("unsupported archive core version: v%d. This tool supports v%d", header.Version, coreVersionV1)
+		return nil, fmt.Errorf("archive header mismatch for v1 reader")
 	}
 
 	// Handle unencrypted archives.
@@ -243,12 +241,10 @@ func getDecryptedReader(archivePath string, password string) (io.ReadCloser, err
 	return io.NopCloser(bytes.NewReader(decryptedPayload)), nil
 }
 
-// ExtractArchive reads a v1 archive and extracts its contents to a specified directory.
-// It is designed to be resilient, skipping unsafe files instead of halting.
-// It returns a list of skipped file paths and a potential fatal error.
-func ExtractArchive(archivePath, outputDir, password string) ([]string, error) {
+// ExtractArchiveV1 reads a v1 archive and extracts its contents to a specified directory.
+func ExtractArchiveV1(archivePath, outputDir, password string) ([]string, error) {
 	var skippedFiles []string
-	payloadReader, err := getDecryptedReader(archivePath, password)
+	payloadReader, err := getDecryptedReaderV1(archivePath, password)
 	if err != nil {
 		return nil, err // Return immediately on fatal read/decryption errors.
 	}
@@ -260,7 +256,6 @@ func ExtractArchive(archivePath, outputDir, password string) ([]string, error) {
 	}
 	tarReader := tar.NewReader(xzReader)
 
-	// Clean the output directory path once for reliable prefix checking.
 	cleanOutputDir, err := filepath.Abs(filepath.Clean(outputDir))
 	if err != nil {
 		return nil, fmt.Errorf("could not resolve output directory path: %w", err)
@@ -269,22 +264,18 @@ func ExtractArchive(archivePath, outputDir, password string) ([]string, error) {
 	for {
 		hdr, err := tarReader.Next()
 		if err == io.EOF {
-			break // End of archive successfully reached.
+			break
 		}
 		if err != nil {
-			// This indicates a corrupted tar stream.
 			return skippedFiles, fmt.Errorf("error reading archive stream: %w", err)
 		}
-
-		// Construct the full, absolute path for the file to be extracted.
+		
 		targetPath := filepath.Join(cleanOutputDir, hdr.Name)
 		cleanTargetPath := filepath.Clean(targetPath)
 
-		// SECURITY: Prevent path traversal attacks (e.g., file paths like "../../../etc/passwd").
-		// Check if the final cleaned path is still within the intended output directory.
 		if !strings.HasPrefix(cleanTargetPath, cleanOutputDir) {
 			skippedFiles = append(skippedFiles, hdr.Name)
-			continue // Skip this unsafe file and continue to the next.
+			continue
 		}
 
 		switch hdr.Typeflag {
@@ -293,7 +284,6 @@ func ExtractArchive(archivePath, outputDir, password string) ([]string, error) {
 				return skippedFiles, err
 			}
 		case tar.TypeReg:
-			// Ensure parent directory of the file exists.
 			if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
 				return skippedFiles, err
 			}
@@ -301,7 +291,6 @@ func ExtractArchive(archivePath, outputDir, password string) ([]string, error) {
 			if err != nil {
 				return skippedFiles, err
 			}
-			// Use defer in a closure to ensure file is closed even on copy error.
 			func() {
 				defer outFile.Close()
 				_, err = io.Copy(outFile, tarReader)
@@ -311,14 +300,12 @@ func ExtractArchive(archivePath, outputDir, password string) ([]string, error) {
 			}
 		}
 	}
-	// Return the list of skipped files and a nil error to indicate overall success.
 	return skippedFiles, nil
 }
 
-// ListArchiveContents reads an archive and returns a slice of ArchiveEntry structs
-// representing the files within, without extracting them.
-func ListArchiveContents(archivePath, password string) ([]ArchiveEntry, error) {
-	payloadReader, err := getDecryptedReader(archivePath, password)
+// ListArchiveContentsV1 reads a v1 archive and returns a slice of ArchiveEntry structs.
+func ListArchiveContentsV1(archivePath, password string) ([]ArchiveEntry, error) {
+	payloadReader, err := getDecryptedReaderV1(archivePath, password)
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +321,7 @@ func ListArchiveContents(archivePath, password string) ([]ArchiveEntry, error) {
 	for {
 		hdr, err := tarReader.Next()
 		if err == io.EOF {
-			break // End of archive
+			break
 		}
 		if err != nil {
 			return nil, err
