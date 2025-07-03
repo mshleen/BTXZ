@@ -104,7 +104,7 @@ To compress and encrypt files or folders into a `.btxz` archive:
 
 ```sh
 # Archive a single file and a whole directory
-btxz create report.docx project_assets/ -o my_archive.btxz
+btxz create report.docx project_assets/ -o my_archive.btxz -l best
 ```
 
 You will be prompted to enter and confirm a password securely.
@@ -143,7 +143,7 @@ This requires the password, as the file list itself is encrypted.
 
 | Command | Alias | Description | Options |
 | :--- | :--- | :--- | :--- |
-| `create` | `c` | Creates a new encrypted, compressed archive. | `-o, --output <path>` (Required)<br>`-p, --password <pass>` |
+| `create` | `c` | Creates a new encrypted, compressed archive. | `-o, --output <path>` (Required)<br>`-p, --password <pass>` `-l, --level <fast/default/best>` |
 | `extract`| `x` | Extracts files and folders from an archive. | `-o, --output <path>`<br>`-p, --password <pass>` |
 | `list`   | `l` | Lists the contents of an archive. | `-p, --password <pass>` |
 | `update` | `u` | Checks for and installs the latest version of BTXZ. | |
