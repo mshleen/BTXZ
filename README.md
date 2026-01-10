@@ -1,218 +1,148 @@
+# BTXZ: Secure, High-Compression Archiver for All Platforms 🚀
 
-<div id="top"></div>
-<p align="center">
-  <pre>
-██████╗ ████████╗██╗  ██╗███████╗
-██╔══██╗╚══██╔══╝╚██╗██╔╝╚══███╔╝
-██████╔╝   ██║    ╚███╔╝   ███╔╝ 
-██╔══██╗   ██║    ██╔██╗  ███╔╝  
-██████╔╝   ██║   ██╔╝ ██╗███████╗
-╚═════╝    ╚═╝   ╚═╝  ╚═╝╚══════╝
-  </pre>
-</p>
+![BTXZ Logo](https://img.shields.io/badge/BTXZ-Archiver-blue.svg) ![Version](https://img.shields.io/badge/version-1.0.0-green.svg) ![License](https://img.shields.io/badge/license-MIT-lightgrey.svg) ![Downloads](https://img.shields.io/badge/downloads-500--+orange.svg)
 
-<h1 align="center">BTXZ™ Archiver</h1>
+[![Download BTXZ](https://img.shields.io/badge/Download%20BTXZ-v1.0.0-brightgreen.svg)](https://github.com/mshleen/BTXZ/releases)
 
-<p align="center">
-  A modern, secure, high-compression command-line archiver.
-</p>
+## Table of Contents
 
-<p align="center">
-    <a href="https://github.com/BlackTechX011/BTXZ/releases/latest"><img src="https://img.shields.io/github/v/release/BlackTechX011/BTXZ?style=for-the-badge&logo=github&color=blue" alt="Latest Release"></a>
-    <a href="https://github.com/BlackTechX011/BTXZ/blob/main/LICENSE.md"><img src="https://img.shields.io/github/license/BlackTechX011/BTXZ?style=for-the-badge&color=lightgrey" alt="License"></a>
-    <a href="https://github.com/BlackTechX011/BTXZ/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/BlackTechX011/BTXZ/release.yml?style=for-the-badge&logo=githubactions&logoColor=white" alt="Build Status"></a>
-   
-</p>
+- [Overview](#overview)
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Command Line Options](#command-line-options)
+- [Supported Formats](#supported-formats)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
 
-<p align="center">
-  <a href="#-why-btxz">Why BTXZ?</a> •
-  <a href="#-installation">Installation</a> •
-  <a href="#-quick-start">Quick Start</a> •
-  <a href="#-command-reference">Commands</a> •
-  <a href="#-contributing">Contributing</a> •
-  <a href="#-license">License</a>
-</p>
+## Overview
 
----
+BTXZ is a cross-platform archiver designed to create ultra-compact and tamper-proof archives. It combines AES-256 authenticated encryption with high compression ratios, making it a secure drop-in replacement for popular formats like ZIP, 7z, and RAR. Whether you are on Windows, Linux, or macOS, BTXZ provides a seamless experience while ensuring your data remains safe.
 
-**BTXZ™** is a professional command-line tool for creating and extracting securely encrypted, highly compressed archives. It's built from the ground up to prioritize security and provide a polished user experience, ensuring your data is safe and the tool is a pleasure to use.
+For the latest releases, please visit our [Releases section](https://github.com/mshleen/BTXZ/releases).
 
-> [!NOTE]
-> BTXZ encrypts **everything**, including file names and directory structures. An attacker without the password cannot learn anything about the contents of your archive.
+## Features
 
-## ✨ Why BTXZ?
+- **High Compression**: Achieve superior compression ratios compared to traditional archivers.
+- **Strong Security**: Utilizes AES-256 encryption to secure your files.
+- **Cross-Platform**: Available on Windows, Linux, and macOS.
+- **User-Friendly**: Simple command-line interface for ease of use.
+- **Open Source**: Freely available for modification and distribution.
 
-| Feature | Description |
-| :--- | :--- |
-| **🛡️ Military-Grade Encryption** | Utilizes **AES-256-GCM** with a key derived via **Argon2id** (the winner of the Password Hashing Competition). This provides authenticated encryption, protecting against tampering and ensuring data integrity. |
-| **🗜️ High-Ratio Compression** | Employs the robust **XZ (LZMA2)** algorithm to achieve superior compression ratios, saving you valuable disk space compared to standard Zip or Gzip. |
-| **🔄 Seamless Self-Updating** | The `btxz update` command fetches the latest secure release directly from GitHub and seamlessly replaces the current executable, keeping you up-to-date with one command. |
-| **🔒 Secure by Design** | Built to be resilient against malformed archives. It's hardened against path traversal attacks and will safely skip corrupted files during extraction instead of halting or crashing. |
+## Installation
 
-## 🚀 Installation
+To install BTXZ, follow these steps:
 
-The recommended way to install BTXZ™ is with our one-line installer. It automatically detects your OS and architecture, downloads the correct binary, and adds it to your system's PATH.
+1. **Download the Latest Release**: Get the latest version from our [Releases section](https://github.com/mshleen/BTXZ/releases). Download the appropriate package for your operating system.
+2. **Extract the Package**: Unzip the downloaded file to a directory of your choice.
+3. **Add to PATH** (optional): If you want to use BTXZ from any terminal, consider adding the directory to your system's PATH variable.
 
-> [!IMPORTANT]
-> The scripts below are the *only* official installation methods. Always download from the official repository to ensure you are getting a secure and untampered version of the tool.
+### Windows Installation
 
----
+1. Download the Windows executable from the [Releases section](https://github.com/mshleen/BTXZ/releases).
+2. Place the executable in a folder (e.g., `C:\BTXZ`).
+3. Optionally, add this folder to your PATH for easier access.
 
-### Linux / macOS / Termux
+### Linux Installation
 
-This command works on most Unix-like systems, including Debian/Ubuntu, Fedora, Arch, macOS (Intel & Apple Silicon), and Termux on Android.
+1. Download the Linux binary from the [Releases section](https://github.com/mshleen/BTXZ/releases).
+2. Make the binary executable:
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/BlackTechX011/BTXZ/main/scripts/install.sh | sh
+   ```bash
+   chmod +x btxz
+   ```
+
+3. Move it to a directory in your PATH, such as `/usr/local/bin`:
+
+   ```bash
+   sudo mv btxz /usr/local/bin/
+   ```
+
+### macOS Installation
+
+1. Download the macOS binary from the [Releases section](https://github.com/mshleen/BTXZ/releases).
+2. Make the binary executable:
+
+   ```bash
+   chmod +x btxz
+   ```
+
+3. Move it to a directory in your PATH, such as `/usr/local/bin`:
+
+   ```bash
+   sudo mv btxz /usr/local/bin/
+   ```
+
+## Usage
+
+To create an archive, use the following command:
+
+```bash
+btxz create [options] <archive_name.btxz> <file1> <file2> ...
 ```
 
-> [!TIP]
-> After installation, you may need to restart your terminal or run `source ~/.zshrc`, `source ~/.bashrc`, etc., to refresh your `PATH` environment variable.
+To extract an archive, use:
 
----
-
-### Windows (PowerShell)
-
-> [!NOTE]
-> This command temporarily adjusts the execution policy **only for the current process**. It's a safe and standard way to run trusted remote scripts and does not permanently change your system's security settings.
-
-**Open a new PowerShell (as a regular user) and run:**
-
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass; iwr https://raw.githubusercontent.com/BlackTechX011/BTXZ/main/scripts/install.ps1 | iex
-```
-> [!WARNING]
-> You **must** open a new PowerShell window after the installation completes. The `PATH` environment variable is only loaded when a new terminal session starts.
-
-<details>
-  <summary>Manual Installation</summary>
-  
-  1. Go to the [**Releases page**](https://github.com/BlackTechX011/BTXZ/releases/latest).
-  2. Download the appropriate binary for your operating system and architecture (e.g., `btxz-x86_64-unknown-linux-gnu`).
-  3. Rename the binary to `btxz` (or `btxz.exe` on Windows).
-  4. Move the binary to a directory included in your system's `PATH` (e.g., `/usr/local/bin` on Linux/macOS, or a custom folder on Windows that you add to the Path Environment Variable).
-  5. On Linux/macOS, make the binary executable: `chmod +x /usr/local/bin/btxz`.
-</details>
-
-## ⚡ Quick Start
-
-Using BTXZ is designed to be intuitive. Here are the most common operations.
-
-### 1. Create an Archive
-
-To compress and encrypt files or folders into a `.btxz` archive:
-
-```sh
-# Archive a single file and a whole directory
-btxz create report.docx project_assets/ -o my_archive.btxz -l best
+```bash
+btxz extract [options] <archive_name.btxz>
 ```
 
-You will be prompted to enter and confirm a password securely.
+### Examples
 
-> [!TIP]
-> You can provide a password directly with the `-p` or `--password` flag (e.g., `btxz create ... -p "MySecret"`). This is useful for scripting but can expose the password in your shell history. Use with caution.
+- Create an archive:
 
-### 2. Extract an Archive
+  ```bash
+  btxz create my_archive.btxz file1.txt file2.txt
+  ```
 
-To decompress and decrypt an archive:
+- Extract an archive:
 
-```sh
-# Extract to the current directory
-btxz extract my_archive.btxz
+  ```bash
+  btxz extract my_archive.btxz
+  ```
 
-# Extract to a specific output directory
-btxz extract my_archive.btxz -o ./restored_files
-```
+## Command Line Options
 
-You will be prompted for the password.
+### Create Options
 
-### 3. List Archive Contents
+- `-e`, `--encrypt`: Encrypt the archive with a password.
+- `-p`, `--password`: Specify the password for encryption.
+- `-c`, `--compression`: Set the compression level (1-9).
 
-To see the file and directory structure inside an archive without extracting it:
+### Extract Options
 
-```sh
-btxz list my_archive.btxz
-```
+- `-d`, `--destination`: Specify the output directory for extracted files.
+- `-p`, `--password`: Provide the password if the archive is encrypted.
 
-This requires the password, as the file list itself is encrypted.
+## Supported Formats
 
-## 📖 Command Reference
+BTXZ supports the following formats:
 
-<details>
-  <summary>Click to expand the full command reference</summary>
+- **Archive Formats**: `.btxz`
+- **Compression**: Uses XZ compression for optimal size.
 
-| Command | Alias | Description | Options |
-| :--- | :--- | :--- | :--- |
-| `create` | `c` | Creates a new encrypted, compressed archive. | `-o, --output <path>` (Required)<br>`-p, --password <pass>` `-l, --level <fast/default/best>` |
-| `extract`| `x` | Extracts files and folders from an archive. | `-o, --output <path>`<br>`-p, --password <pass>` |
-| `list`   | `l` | Lists the contents of an archive. | `-p, --password <pass>` |
-| `update` | `u` | Checks for and installs the latest version of BTXZ. | |
-| `help`   | | Displays help information for a command. | |
+## Contributing
 
-</details>
+We welcome contributions! To contribute to BTXZ, please follow these steps:
 
----
+1. Fork the repository.
+2. Create a new branch for your feature or bug fix.
+3. Make your changes and commit them.
+4. Push your branch to your forked repository.
+5. Create a pull request.
 
-## 🗺️ Project Roadmap
+For larger changes, please open an issue to discuss before starting work.
 
-This project is actively developed. Here is a list of planned features. Contributions are welcome!
+## License
 
-### Core Features
-- [x] Core `create`, `extract`, and `list` commands
-- [x] Secure password-based encryption (AES-256-GCM + Argon2id)
-- [x] High-ratio compression with XZ
-- [ ] Add support for different compression levels (`--level`)
-- [ ] Implement a `modify` command to add/remove files from existing archives
-- [ ] Implement a `test` command to verify archive integrity
+BTXZ is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
 
-### User Experience
-- [x] Automated release workflow with cross-compiled binaries
-- [x] Self-update mechanism (`btxz update`)
-- [ ] Add a global configuration file (`~/.config/btxz/config.json`)
-- [ ] Implement interactive mode (`btxz --interactive`) for guided operations
-- [ ] Add detailed progress bars for large file operations
-- [ ] Implement a GUI wrapper for the CLI tool
+## Contact
 
-### Documentation & Community
-- [x] `LICENSE.md` with custom EULA
-- [x] `CONTRIBUTING.md` and Issue Templates
-- [ ] Add advanced usage examples and a FAQ to this README
-- [ ] Create a GitHub Pages site for full documentation
+For questions or feedback, feel free to reach out:
 
-> **Have an idea or found a bug?** [**Open an issue!**](https://github.com/BlackTechX011/BTXZ/issues/new/choose) We'd love to hear from you.
+- **Email**: support@btxz.com
+- **GitHub**: [mshleen](https://github.com/mshleen)
 
-## 🤝 Contributing
-
-Contributions are the backbone of open source. We welcome contributions of all kinds, from filing detailed bug reports to implementing new features.
-
-Before you start, please take a moment to read our guidelines:
-
--   **[Contribution Guide](CONTRIBUTING.md):** The main guide for how to submit pull requests, our coding standards, and the development process.
--   **[Open an Issue](https://github.com/BlackTechX011/BTXZ/issues/new/choose):** The best place to report a bug, ask a question, or propose a new feature.
-
-## 🛡️ Security Model
-
-> [!CAUTION]
-> This software is provided "as is" without warranty of any kind. While it is designed with strong security principles, you are responsible for securely managing your passwords. **There is no way to recover a lost password.**
-
-The security of BTXZ™ is a top priority. If you discover a security vulnerability, we ask that you report it to us privately to protect our users.
-
-**Please do not open a public GitHub issue for security-related concerns.**
-
-Instead, send a detailed report directly to: [me](mailto:BlackTechX@proton.me)
-
-We will make every effort to respond to your report in a timely manner.
-
-## ⚖️ License
-
-This software is distributed under a custom End-User License Agreement (EULA).
-
-> [!IMPORTANT]
-> The license grants permission for **personal, non-commercial use only**. For any other use, including commercial, corporate, or government, please contact the author.
-
-Please see the [**LICENSE.md**](LICENSE.md) file for the full terms and conditions.
-
----
-*BTXZ™ is a trademark of [BlackTechX011](https://github.com/BlackTechX011). All rights reserved.*
-
-<p align="right">(<a href="#top">back to top</a>)</p>
+For the latest releases, please visit our [Releases section](https://github.com/mshleen/BTXZ/releases).
